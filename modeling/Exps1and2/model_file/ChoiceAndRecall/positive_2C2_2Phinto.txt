@@ -1,0 +1,61 @@
+model{
+
+    for (i in 1:ntrial){
+
+        a_recall[i] <- recall[sub[i],condition[i]]*V_recall[sub[i],condition[i]]
+        b_recall[i] <- (1-recall[sub[i],condition[i]])*V_recall[sub[i],condition[i]]
+        p_rec[i] ~ dbeta(a_recall[i],b_recall[i])T(0.001,0.999)
+
+        p_ask[i] <- ifelse(p_rec[i]>C[sub[i],condition[i]], 0.999, 0.001)
+        ask[i] ~ dbern(p_ask[i])
+
+        loglik_ask[i] <- ifelse(ask[i]==1,log(p_ask[i]),log(1-p_ask[i]))
+
+        p_hint_obj[i] <- ifelse(condition[i]<3, U_hint_obj[sub[i],1], U_hint_obj[sub[i],2])
+        p_rec_new[i] <- ifelse(condition[i]==1,ifelse(p_ask[i]>0.5,p_rec[i]+p_hint_obj[i],p_rec[i]),ifelse(condition[i]==3,ifelse(p_ask[i]>0.5,p_rec[i]+p_hint_obj[i],p_rec[i]),p_rec[i]))
+        p_rec_final[i] <- ifelse(p_rec_new[i]>=1, 0.999, p_rec_new[i] )
+        rectrial[i] ~ dbern(p_rec_final[i])
+
+        loglik_rec[i] <- ifelse(rectrial[i]==1,log(p_rec_final[i]),log(1-p_rec_final[i]))
+    }
+    for (subj in 1:nsubj){
+
+        C[subj,1] <- C1[subj,1]
+        C[subj,2] <- C1[subj,2]
+        C[subj,3] <- C1[subj,1]
+        C[subj,4] <- C1[subj,2]
+
+        for (i in 1:2){
+            C1[subj,i] ~ dbeta(group_a_C[i],group_b_C[i])T(0.001,0.999)
+        }
+
+        for (i in 1:4){
+            V_recall[subj,i] ~ dnorm(0,tauRecall[i])T(0.001,)
+        }
+
+        for (i in 1:2){
+            U_hint_obj[subj,i] ~ dbeta(group_a_hint_obj[i],group_b_hint_obj[i])T(0.001,0.999)
+        }
+
+    }
+
+    for (i in 1:2){
+        group_a_C[i] <- groupUC[i] * groupVC[i]
+        group_b_C[i] <- (1-groupUC[i]) * groupVC[i]
+        groupUC[i] ~ dbeta(1,1)
+        groupVC[i] ~ dgamma(1,0.05)
+    }
+
+    for (i in 1:4){
+        tauRecall[i] <- 1/(sigmaRecall[i]^2)
+        sigmaRecall[i] ~ dt(0,0.04,1)T(0,)
+    }
+
+    for (i in 1:2){
+        group_a_hint_obj[i] <- groupUhintobj[i] * groupVhintobj[i]
+        group_b_hint_obj[i] <- (1-groupUhintobj[i]) * groupVhintobj[i]
+        groupUhintobj[i] ~ dbeta(1,1)
+        groupVhintobj[i] ~ dgamma(1,0.05)
+    }
+
+}

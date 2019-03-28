@@ -1,0 +1,55 @@
+model{
+
+    for (i in 1:ntrial){
+
+        confpre_withouthint[i] <- prec[i] + bias[sub[i],condition[i]]
+        confpre_withouthint_final[i] <- ifelse(confpre_withouthint[i]<=0,0,ifelse(confpre_withouthint[i]>=1,1,confpre_withouthint[i]))
+        p_hint[i] <- prec[i]*beta1[sub[i],condition[i]]+beta0[sub[i],condition[i]]
+        p_hint_final[i] <- ifelse(p_hint[i]<=0,0,ifelse(p_hint[i]>=1,1,p_hint[i]))
+        confpre_withhint[i] <- p_hint_final[i]+prec[i]+bias[sub[i],condition[i]]
+        confpre_withhint_final[i] <- ifelse(confpre_withhint[i]<=0,0,ifelse(confpre_withhint[i]>=1,1,confpre_withhint[i]))
+        confpre[i] <- ifelse(confcondition[i]==0,confpre_withouthint_final[i],confpre_withhint_final[i])
+        conf[i] ~ dnorm(confpre[i],tauconf)
+
+    }
+
+    for (subj in 1:nsubj){
+
+        beta0[subj,1] <- 0.925*beta0_1[subj,1]+0.075
+        beta0[subj,2] <- 0.925*beta0_1[subj,1]+0.075
+        beta0[subj,3] <- 0.925*beta0_1[subj,2]+0.075
+        beta0[subj,4] <- 0.925*beta0_1[subj,2]+0.075
+
+        for (i in 1:4){
+            beta1[subj,i] <- (0.075 - beta0[subj,i]) / C[subj,i]
+        }
+
+        for (i in 1:2){
+            beta0_1[subj,i] ~ dbeta(group_a_beta0[i],group_b_beta0[i])T(0.001,0.999)
+        }
+
+        bias[subj,1] <- 2*bias1[subj] - 1
+        bias[subj,2] <- 2*bias1[subj] - 1
+        bias[subj,3] <- 2*bias1[subj] - 1
+        bias[subj,4] <- 2*bias1[subj] - 1
+
+        bias1[subj] ~ dbeta(group_a_bias,group_b_bias)T(0.001,0.999)
+
+    }
+
+    for (i in 1:2){
+        group_a_beta0[i] <- groupUbeta0[i] * groupVbeta0[i]
+        group_b_beta0[i] <- (1-groupUbeta0[i]) * groupVbeta0[i]
+        groupUbeta0[i] ~ dbeta(1,1)
+        groupVbeta0[i] ~ dgamma(1,0.05)
+    }
+
+        group_a_bias <- groupUbias * groupVbias
+        group_b_bias <- (1-groupUbias) * groupVbias
+        groupUbias ~ dbeta(1,1)
+        groupVbias ~ dgamma(1,0.05)
+
+    tauconf <- 1/(sigmaconf^2)
+    sigmaconf ~ dt(0,0.04,1)T(0,)
+
+}
